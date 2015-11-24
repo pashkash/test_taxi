@@ -1,0 +1,1 @@
+from test_taxi.settings.base import *  # NOQA
