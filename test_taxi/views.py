@@ -155,46 +155,46 @@ class OrderViewSet(viewsets.ViewSet):
             return Response(CommonSerializer({"success": False,
                                               'reason': 'Passenger with this id does not exist'}).data)
 
-    # @list_route(methods=['post'])
-    # def cancel_order(self, request):
-    #     """Passenger can cancel the order.
-    #     ---
-    #     parameters_strategy: replace
-    #     parameters:
-    #         - name: passanger_id
-    #           required: true
-    #           defaultValue: 1
-    #           description: id of passenger account
-    #           paramType: form
-    #           type: int
-    #         - name: order_id
-    #           required: true
-    #           defaultValue: 1
-    #           description: order id
-    #           paramType: form
-    #           type: int
-    #
-    #     response_serializer: CommonSerializer
-    #     """
-    #     passenger_id, order_id = request.POST.get("passenger_id", None), request.POST.get("order_id", None)
-    #
-    #     if not all([passenger_id, order_id]):
-    #         return Response(CommonSerializer({"success": False, 'reason': 'Not enough params'}).data)
-    #
-    #     try:
-    #         passenger = Passenger.objects.get(id=passenger_id)
-    #         try:
-    #             order = Order.objects.get(id=order_id, passenger=passenger)
-    #
-    #             order.status = 5
-    #             order.save(update_fields=["status"])
-    #
-    #             # make taxi driver free
-    #             order.taxi_driver.is_busy = False
-    #             order.taxi_driver.save(update_fields=["is_busy"])
-    #
-    #         except Order.DoesNotExist:
-    #             return Response(CommonSerializer({"success": False, 'reason': 'Wrong order id'}).data)
-    #     except Passenger.DoesNotExist:
-    #         return Response(CommonSerializer({"success": False, 'reason': 'Wrong passenger id'}).data)
-    #
+    @list_route(methods=['post'])
+    def cancel_order(self, request):
+        """Passenger can cancel the order.
+        ---
+        parameters_strategy: replace
+        parameters:
+            - name: passanger_id
+              required: true
+              defaultValue: 1
+              description: id of passenger account
+              paramType: form
+              type: int
+            - name: order_id
+              required: true
+              defaultValue: 1
+              description: order id
+              paramType: form
+              type: int
+
+        response_serializer: CommonSerializer
+        """
+        passenger_id, order_id = request.POST.get("passenger_id", None), request.POST.get("order_id", None)
+
+        if not all([passenger_id, order_id]):
+            return Response(CommonSerializer({"success": False, 'reason': 'Not enough params'}).data)
+
+        try:
+            passenger = Passenger.objects.get(id=passenger_id)
+            try:
+                order = Order.objects.get(id=order_id, passenger=passenger)
+
+                order.status = 5
+                order.save(update_fields=["status"])
+
+                # make taxi driver free
+                order.taxi_driver.is_busy = False
+                order.taxi_driver.save(update_fields=["is_busy"])
+
+            except Order.DoesNotExist:
+                return Response(CommonSerializer({"success": False, 'reason': 'Wrong order id'}).data)
+        except Passenger.DoesNotExist:
+            return Response(CommonSerializer({"success": False, 'reason': 'Wrong passenger id'}).data)
+
