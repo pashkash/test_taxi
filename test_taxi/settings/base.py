@@ -48,7 +48,7 @@ INSTALLED_APPS = (
     'rest_framework_swagger',
     'test_taxi',
     'suit',
-    'geoposition'
+    'django.contrib.gis',
     'django.contrib.admin',
 )
 
@@ -83,18 +83,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'test_taxi.wsgi.application'
 
-
-# Database
-# https://docs.djangoproject.com/en/1.8/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    }
-}
-
-
 # Internationalization
 # https://docs.djangoproject.com/en/1.8/topics/i18n/
 
@@ -123,7 +111,7 @@ REST_FRAMEWORK = {
     # ),
     'TEST_REQUEST_DEFAULT_FORMAT': 'json',
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
+        'rest_framework.permissions.AllowAny',
     ],
 
     'DEFAULT_FILTER_BACKENDS': ('rest_framework.filters.DjangoFilterBackend',)
@@ -136,3 +124,17 @@ SUIT_CONFIG = {
     'LIST_PER_PAGE': 15
 }
 
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.contrib.gis.db.backends.mysql',
+        'NAME': 'test_taxi',
+        'USER': 'root',
+        'PASSWORD': 'kawai2006',
+        'HOST': 'localhost',
+        'PORT': '',
+        'TEST_CHARSET': 'utf8',
+        'OPTIONS': {
+           'init_command': 'SET storage_engine=INNODB',
+        }
+    }
+}

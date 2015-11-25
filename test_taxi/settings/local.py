@@ -7,7 +7,7 @@ DEBUG = True
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
+        'ENGINE': 'django.contrib.gis.db.backends.mysql',
         'NAME': 'test_taxi',
         'USER': 'root',
         'PASSWORD': 'kawai2006',

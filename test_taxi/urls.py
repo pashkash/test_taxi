@@ -22,8 +22,8 @@ from . import views
 
 router = routers.DefaultRouter()
 
-# router.register(r'items', views.ItemViewSet)
-
+router.register(r'taxi_drivers', views.TaxiDriverViewSet)
+router.register(r'orders', views.OrderViewSet)
 
 urlpatterns = [
     url(r'^admin/', include(admin.site.urls)),

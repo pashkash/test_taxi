@@ -1,20 +1,14 @@
+from datetime import datetime
 from rest_framework import viewsets
-from rest_framework.decorators import list_route, permission_classes, authentication_classes, api_view
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import list_route
 from rest_framework.response import Response
 from .api_serializers import *
-from .models import *
-from rest_framework import filters
-from rest_framework import generics
-from django.contrib.auth.models import User
-from rest_framework import authentication
-from rest_framework import exceptions
-from django.contrib.auth import authenticate
+from django.contrib.gis.geos import fromstr
 
 
 class TaxiDriverViewSet(viewsets.ViewSet):
-    # queryset = TaxiDriver.objects.all()
-    # serializer_class = TaxiDriverSerializer
+    queryset = TaxiDriver.objects.all()
+    serializer_class = TaxiDriverSerializer
 
     @list_route(methods=['post'])
     def update_geoposition(self, request):
@@ -56,16 +50,17 @@ class TaxiDriverViewSet(viewsets.ViewSet):
             return Response(CommonSerializer({"success": True, 'reason': ''}).data)
 
         except TaxiDriver.DoesNotExist:
-            return Response(CommonSerializer({"success": False, 'reason': 'Taxi driver with this id doesnt exist'}).data)
+            return Response(
+                CommonSerializer({"success": False, 'reason': 'Taxi driver with this id doesnt exist'}).data)
 
 
 class OrderViewSet(viewsets.ViewSet):
-    # queryset = Order.objects.all()
-    # serializer_class = OrderSerializer
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
 
     @list_route(methods=['post'])
     def create_order(self, request):
-        """Send geoposition of passenger and time for deliver.
+        """Passenger can create the order.
         ---
         parameters_strategy: replace
         parameters:
@@ -89,8 +84,8 @@ class OrderViewSet(viewsets.ViewSet):
               type: float
             - name: start_ride_datetime
               required: false
-              defaultValue:
-              description: datetime for starting the deliver
+              defaultValue: 2015-11-30 12:00:00
+              description: datetime ('%Y-%m-%d %H:%M:%S') for starting the deliver
               paramType: form
               type: datetime
 
@@ -102,22 +97,104 @@ class OrderViewSet(viewsets.ViewSet):
         if not all([passenger_id, lat, lon]):
             return Response(CommonSerializer({"success": False, 'reason': 'Not enough params'}).data)
 
+        verified_start_ride_datetime = None
+        if start_ride_datetime:
+            try:
+                verified_start_ride_datetime = datetime.strptime(start_ride_datetime, '%Y-%m-%d %H:%M:%S')
+
+                if verified_start_ride_datetime < datetime.now():
+                    return Response(CommonSerializer({"success": False,
+                                                      'reason': 'We want future datetime.'}).data)
+
+            except ValueError:
+                return Response(CommonSerializer({"success": False,
+                                                  'reason': 'Wrong start_ride_datetime format.'}).data)
+
         try:
             passenger = Passenger.objects.get(id=passenger_id)
 
-            # find nearest driver
-            # make order
-            # make history
+            # common params of the order
+            order_params = {'passenger': passenger, 'geo_position': 'POINT(' + lat + ' ' + lon + ')'}
+
+            # make full order
+            if not verified_start_ride_datetime:
+                # get nearest taxi driver
+                ref_location = fromstr('POINT(' + lat + ' ' + lon + ')', srid=4326)
+                driver = TaxiDriver.objects.filter(is_busy=False).distance(ref_location).order_by('distance')[0]
+
+                if not driver:
+                    return Response(CommonSerializer({"success": False, 'reason': 'Have not free taxi divers.'}).data)
+
+                order_params['taxi_driver'] = driver
+                order_params['status'] = 2
+                order = Order.objects.create(**order_params)
+                driver.is_busy = True
+                driver.save()
+
+                # send push message (we need token device id) to the taxi driver about the new Order
+                # make delivered state
+                order.status = 4
+                order.save(update_fields=["status"])
+                # make taxi driver free
+                driver.is_busy = False
+                driver.save(update_fields=["is_busy"])
+
+                # then delete the order
+                order.delete()
+                order.save(update_fields=["status"])
+
+            # make queued order
+            else:
+                order_params['status'] = 1
+                order_params['start_ride_datetime'] = verified_start_ride_datetime
+                Order.objects.create(**order_params)
 
             return Response(CommonSerializer({"success": True, 'reason': ''}).data)
 
-        except TaxiDriver.DoesNotExist:
+        except Passenger.DoesNotExist:
             return Response(CommonSerializer({"success": False,
-                                              'reason': 'Taxi driver with this id does not exist'}).data)
+                                              'reason': 'Passenger with this id does not exist'}).data)
 
-
-    @list_route(methods=['post'])
-    def cancel_order(self, request):
-        pass
-        # cancel order
-        # make history
+    # @list_route(methods=['post'])
+    # def cancel_order(self, request):
+    #     """Passenger can cancel the order.
+    #     ---
+    #     parameters_strategy: replace
+    #     parameters:
+    #         - name: passanger_id
+    #           required: true
+    #           defaultValue: 1
+    #           description: id of passenger account
+    #           paramType: form
+    #           type: int
+    #         - name: order_id
+    #           required: true
+    #           defaultValue: 1
+    #           description: order id
+    #           paramType: form
+    #           type: int
+    #
+    #     response_serializer: CommonSerializer
+    #     """
+    #     passenger_id, order_id = request.POST.get("passenger_id", None), request.POST.get("order_id", None)
+    #
+    #     if not all([passenger_id, order_id]):
+    #         return Response(CommonSerializer({"success": False, 'reason': 'Not enough params'}).data)
+    #
+    #     try:
+    #         passenger = Passenger.objects.get(id=passenger_id)
+    #         try:
+    #             order = Order.objects.get(id=order_id, passenger=passenger)
+    #
+    #             order.status = 5
+    #             order.save(update_fields=["status"])
+    #
+    #             # make taxi driver free
+    #             order.taxi_driver.is_busy = False
+    #             order.taxi_driver.save(update_fields=["is_busy"])
+    #
+    #         except Order.DoesNotExist:
+    #             return Response(CommonSerializer({"success": False, 'reason': 'Wrong order id'}).data)
+    #     except Passenger.DoesNotExist:
+    #         return Response(CommonSerializer({"success": False, 'reason': 'Wrong passenger id'}).data)
+    #
