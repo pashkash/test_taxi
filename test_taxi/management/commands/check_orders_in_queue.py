@@ -21,6 +21,8 @@ class Command(BaseCommand):
                 print "Have no free taxi. Finish."
                 return False
 
+            print order.id
+            print order.start_ride_datetime
             order.taxi_driver = driver
             order.status = 2
             order.save()
@@ -39,7 +41,6 @@ class Command(BaseCommand):
             driver.save(update_fields=["is_busy"])
 
             # then delete the order
-            order.delete()
-            order.save(update_fields=["status"])
+            # order.delete()
 
         print "Finish"

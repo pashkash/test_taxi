@@ -7,15 +7,11 @@ DEBUG = True
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.mysql',
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
         'NAME': 'test_taxi',
-        'USER': 'root',
-        'PASSWORD': 'kawai2006',
+        'USER': 'postgres',
+        'PASSWORD': 'postgres',
         'HOST': 'localhost',
         'PORT': '',
-        'TEST_CHARSET': 'utf8',
-        'OPTIONS': {
-           'init_command': 'SET storage_engine=INNODB',
-        }
     }
 }

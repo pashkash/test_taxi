@@ -43,8 +43,7 @@ class TaxiDriverViewSet(viewsets.ViewSet):
 
         try:
             driver = TaxiDriver.objects.get(id=driver_id)
-            driver.geo_position.latitude = 0
-            driver.geo_position.longitude = 0
+            driver.geo_position = fromstr('POINT(' + lat + ' ' + lon + ')', srid=4326)
             driver.save()
 
             return Response(CommonSerializer({"success": True, 'reason': ''}).data)
@@ -85,7 +84,7 @@ class OrderViewSet(viewsets.ViewSet):
             - name: start_ride_datetime
               required: false
               defaultValue: 2015-11-30 12:00:00
-              description: datetime ('%Y-%m-%d %H:%M:%S') for starting the deliver
+              description: datetime ('%Y-%m-%dT%H:%M:%S') for starting the deliver
               paramType: form
               type: datetime
 
@@ -100,7 +99,7 @@ class OrderViewSet(viewsets.ViewSet):
         verified_start_ride_datetime = None
         if start_ride_datetime:
             try:
-                verified_start_ride_datetime = datetime.strptime(start_ride_datetime, '%Y-%m-%d %H:%M:%S')
+                verified_start_ride_datetime = datetime.strptime(start_ride_datetime, '%Y-%m-%dT%H:%M:%S')
 
                 if verified_start_ride_datetime < datetime.now():
                     return Response(CommonSerializer({"success": False,
@@ -114,7 +113,8 @@ class OrderViewSet(viewsets.ViewSet):
             passenger = Passenger.objects.get(id=passenger_id)
 
             # common params of the order
-            order_params = {'passenger': passenger, 'geo_position': 'POINT(' + lat + ' ' + lon + ')'}
+            order_params = {'passenger': passenger, 'geo_position': 'POINT(' + lat + ' ' + lon + ')',
+                            'start_ride_datetime': datetime.now()}
 
             # make full order
             if not verified_start_ride_datetime:
@@ -135,18 +135,19 @@ class OrderViewSet(viewsets.ViewSet):
                 # make delivered state
                 order.status = 4
                 order.save(update_fields=["status"])
+
                 # make taxi driver free
                 driver.is_busy = False
                 driver.save(update_fields=["is_busy"])
 
                 # then delete the order
-                order.delete()
-                order.save(update_fields=["status"])
+                # order.delete()
 
             # make queued order
             else:
                 order_params['status'] = 1
                 order_params['start_ride_datetime'] = verified_start_ride_datetime
+                # print verified_start_ride_datetime
                 Order.objects.create(**order_params)
 
             return Response(CommonSerializer({"success": True, 'reason': ''}).data)
@@ -161,7 +162,7 @@ class OrderViewSet(viewsets.ViewSet):
         ---
         parameters_strategy: replace
         parameters:
-            - name: passanger_id
+            - name: passenger_id
               required: true
               defaultValue: 1
               description: id of passenger account
@@ -184,17 +185,19 @@ class OrderViewSet(viewsets.ViewSet):
         try:
             passenger = Passenger.objects.get(id=passenger_id)
             try:
-                order = Order.objects.get(id=order_id, passenger=passenger)
+                order = Order.objects.get(id=order_id, passenger=passenger, status__in=[0, 1, 2, 3])
 
                 order.status = 5
                 order.save(update_fields=["status"])
 
                 # make taxi driver free
-                order.taxi_driver.is_busy = False
-                order.taxi_driver.save(update_fields=["is_busy"])
+                if order.taxi_driver:
+                    order.taxi_driver.is_busy = False
+                    order.taxi_driver.save(update_fields=["is_busy"])
+
+                return Response(CommonSerializer({"success": True, 'reason': ''}).data)
 
             except Order.DoesNotExist:
                 return Response(CommonSerializer({"success": False, 'reason': 'Wrong order id'}).data)
         except Passenger.DoesNotExist:
             return Response(CommonSerializer({"success": False, 'reason': 'Wrong passenger id'}).data)
-

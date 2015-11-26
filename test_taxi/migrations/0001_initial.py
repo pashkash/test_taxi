@@ -20,7 +20,6 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('geo_position', django.contrib.gis.db.models.fields.PointField(srid=4326, max_length=42, null=True, blank=True)),
                 ('start_ride_datetime', models.DateTimeField()),
-                ('finish_ride_datetime', models.DateTimeField()),
                 ('status', models.PositiveIntegerField(default=0, choices=[(1, b'waiting'), (2, b'accepted by taxi driver'), (4, b'delivered'), (5, b'canceled by passenger'), (10, b'deleted')])),
                 ('created', models.DateTimeField(auto_now_add=True)),
             ],

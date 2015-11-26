@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from django.contrib.gis.db import models
 from django.contrib.auth.models import User
+from django.contrib import admin
 
 ORDER_STATUSES = (
     # (0, 'created by passenger'),
@@ -25,6 +26,11 @@ class TaxiDriver(User):
     def __unicode__(self):
         return unicode(self.username)
 
+    objects = models.GeoManager()
+
+
+admin.site.register(TaxiDriver)
+
 
 class Passenger(User):
     """
@@ -36,6 +42,9 @@ class Passenger(User):
         return unicode(self.username)
 
 
+admin.site.register(Passenger)
+
+
 class Order(models.Model):
     """
     Orders.
@@ -45,15 +54,19 @@ class Order(models.Model):
     taxi_driver = models.ForeignKey(TaxiDriver, null=True, related_name='taxi_driver')
 
     geo_position = models.PointField(max_length=42, null=True, blank=True, srid=4326)
-    start_ride_datetime = models.DateTimeField(null=False)
-    finish_ride_datetime = models.DateTimeField(null=False)
+    start_ride_datetime = models.DateTimeField(null=False, db_index=True)
 
-    status = models.PositiveIntegerField(default=0, choices=ORDER_STATUSES)
+    status = models.PositiveIntegerField(default=0, choices=ORDER_STATUSES, db_index=True)
     created = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        order = super(Order, self).save(*args, **kwargs)
-        OrderHistory.objects.create(order=order, action=order.action)
+        super(Order, self).save(*args, **kwargs)
+        OrderHistory.objects.create(order_id=self.pk, action=self.status)
+
+    objects = models.GeoManager()
+
+
+admin.site.register(Order)
 
 
 class OrderHistory(models.Model):
@@ -62,5 +75,8 @@ class OrderHistory(models.Model):
     Order's history.
     """
     order = models.ForeignKey(Order, null=False, related_name='order')
-    action = models.PositiveIntegerField(default=0, blank=True, choices=ORDER_STATUSES)
+    action = models.PositiveIntegerField(default=0, blank=True, choices=ORDER_STATUSES, db_index=True)
     created = models.DateTimeField(auto_now_add=True)
+
+
+admin.site.register(OrderHistory)
